@@ -1,0 +1,69 @@
+import tkinter as tk
+from tkinter import ttk
+import serial
+import serial.tools.list_ports
+
+class ESP32App:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Comunicación con ESP32")
+        self.serial_connection = None
+
+        # Componentes de la GUI
+        self.port_label = ttk.Label(root, text="Selecciona el puerto:")
+        self.port_label.grid(row=0, column=0, padx=10, pady=10)
+
+        self.port_combobox = ttk.Combobox(root, values=self.get_serial_ports())
+        self.port_combobox.grid(row=0, column=1, padx=10, pady=10)
+
+        self.connect_button = ttk.Button(root, text="Conectar", command=self.connect_to_serial)
+        self.connect_button.grid(row=0, column=2, padx=10, pady=10)
+
+        self.number_label = ttk.Label(root, text="Número a enviar:")
+        self.number_label.grid(row=1, column=0, padx=10, pady=10)
+
+        self.number_entry = ttk.Entry(root)
+        self.number_entry.grid(row=1, column=1, padx=10, pady=10)
+
+        self.send_button = ttk.Button(root, text="Enviar", command=self.send_number)
+        self.send_button.grid(row=1, column=2, padx=10, pady=10)
+
+        self.result_label = ttk.Label(root, text="Resultado:")
+        self.result_label.grid(row=2, column=0, padx=10, pady=10)
+
+        self.result_value = ttk.Label(root, text="---")
+        self.result_value.grid(row=2, column=1, padx=10, pady=10)
+
+    def get_serial_ports(self):
+        ports = serial.tools.list_ports.comports()
+        return [port.device for port in ports]
+
+    def connect_to_serial(self):
+        port = self.port_combobox.get()
+        try:
+            self.serial_connection = serial.Serial(port, baudrate=115200, timeout=1)
+            self.result_value.config(text="Conectado")
+        except Exception as e:
+            self.result_value.config(text="Error al conectar")
+
+    def send_number(self):
+        if self.serial_connection and self.serial_connection.is_open:
+            number = self.number_entry.get()
+            if number.isdigit():
+                self.serial_connection.write((number + '\n').encode('utf-8'))
+                response = self.serial_connection.readline().decode('utf-8').strip()
+                self.result_value.config(text=response)
+            else:
+                self.result_value.config(text="Ingresa un número válido")
+        else:
+            self.result_value.config(text="No conectado")
+
+    def close_connection(self):
+        if self.serial_connection and self.serial_connection.is_open:
+            self.serial_connection.close()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ESP32App(root)
+    root.protocol("WM_DELETE_WINDOW", app.close_connection)
+    root.mainloop()
